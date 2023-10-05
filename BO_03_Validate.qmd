@@ -1,0 +1,260 @@
+---
+title: "<img src='logo_td.png' alt='Logo' style='vertical-align: middle; width:100px'> Workshop: Crítica e Imputação de Dados no R: Validate"
+subtitle: "Compartilhando o código em R"
+abstract: |
+  Neste tutorial, exploramos o poderoso pacote validate do R, que é uma ferramenta essencial para validar dados e garantir a qualidade dos resultados em projetos. O pacote validate oferece uma variedade de funções que nos permitem verificar a validade dos dados criando regras de crítica.
+author:
+  - name: "[Caio Cesar - caio.goncalves@fjp.mg.gov.br ](https://github.com/ccsgonc)"
+    affiliation: Fundação João Pinheiro
+    affiliation_url: https://fjp.mg.gov.br/
+  - name: "[Vitor Marinho - vitor.marinho@fjp.mg.gov.br ](https://github.com/vitor-marinho-fjp)"
+    affiliation: Fundação João Pinheiro/Cedeplar
+    affiliation_url: https://fjp.mg.gov.br/
+citation:
+  title: Crítica e Imputação de Dados no R
+format: html
+theme: Sandstone
+toc: true 
+toc_float: true
+number-sections: true
+lang: pt
+editor: visual
+---
+
+## Escrevendo e aplicando regras de críticas usando `validate`
+
+O pacote validate do R é uma ferramenta poderosa que pode ser usada para validar dados e garantir a qualidade dos resultados de um projeto. Ele oferece uma variedade de funções que podem ser usadas para verificar a validade de dados, incluindo:
+
+-   **Validação de tipos de dados:** O pacote validate pode ser usado para verificar se os dados estão no formato correto. Por exemplo, você pode usar a função `is.numeric()` para verificar se uma variável é um número.
+
+-   **Validação de valores:** O pacote validate pode ser usado para verificar se os valores estão dentro de um intervalo aceitável. Por exemplo, você pode usar a função `between()` para verificar se um valor está entre dois valores especificados.
+
+-   **Validação de regras:** O pacote validate pode ser usado para verificar se os dados atendem a regras específicas. Por exemplo, você pode usar a função `validate()` para verificar se um valor é maior que outro valor.
+
+Confrontar os dados com as regras e armazenar os resultados
+
+![Van der Loo; de Jonge (2019).](regras.png){alt="Van der Loo; de Jonge (2019)."}
+
+Regras de crítica são expressões que são avaliadas ao ser confrontadas com dados, e resultam em um objeto do tipo 'logical' (TRUE ou FALSE)
+
+Verificações de tipo da variável: is.numeric, is.character,. . .
+
+Comparações: \<, \<=, ==, identical, !=, %in%, \>=, \>
+
+Operadores lógicos: \|, &, if, !, all, any
+
+# Padronização nas regras de crítica
+
+A padronização dos nomes permite que seja possível a identificação da classificação da regra e a presenção do atributo de flexilidade. Define-se a seguinte proposta de nomemclatura para as regras de crítica, conforme Silva (2020):
+
+*1 carácter indicando finalidade + 1 carácter indicando flexibilidade + Sequência numérica*
+
+**Classificação por finalidade**
+
+-   Tipo (T)
+
+-   Validade ou Intervalo (V)
+
+-   Fluxo (F)
+
+-   Consistência (C)
+
+-   Distribuição (D)
+
+**Classificação por flexibilidade**
+
+-   Flexível (F)
+
+-   Inflexível (I)
+
+**Exemplos**
+
+TI01: regra de tipo e inflexível
+
+VI08: regra de validade e inflexível
+
+CF02: regra de consistência e flexível
+
+Por definição, regras da classe tipo, validade e fluxo são inflexíveis. As regras da classe consistência podem ser flexíveis e inflexíveis e, por fim, a regra do tipo distribuição é sempre flexível.
+
+# Leitura dos dados
+
+```{r warning=FALSE, output=FALSE}
+
+### Instalação e Carregamento do Pacote
+
+# Lista de pacotes necessários
+pacotes <- c('validate', 'tidyverse', 'gt','readxl')
+
+# Verifica se os pacotes estão instalados e instala se necessário
+install.packages(setdiff(x = pacotes,
+                         y = rownames(installed.packages())))
+
+# Carrega os pacotes
+lapply(X = pacotes,
+       FUN = library,
+       character.only = TRUE)
+
+
+
+```
+
+```{r}
+# Carregando dados
+
+dados <- read_excel("dados_simulados.xlsx")
+
+dados %>%
+  head(5) %>%
+  gt()
+```
+
+A função `validator` serve para definir um conjunto de regras de críticas que podem ser aplicadas a diferentes tipos de conjuntos de dados.
+
+**Verificar valores nulos:**
+
+-   Verifique se não há valores nulos em colunas críticas, como "IBGE7," e outras colunas-chave.
+
+**Validar faixas de valores:**
+
+-   Verifique se os valores em colunas numéricas estão dentro de faixas aceitáveis, por exemplo, garantir que as taxas estejam entre 0 e 100.
+
+**Verificar valores ausentes em grupos de colunas relacionadas:**
+
+-   Verifique se as colunas relacionadas, como as taxas de mortalidade, têm valores ausentes em conjunto.
+
+**Verificar valores booleanos:**
+
+-   Verifique se as colunas com valores lógicos (TRUE/FALSE) estão preenchidas corretamente.
+
+**Validar que certas colunas não possuem valores nulos e são numéricas:**
+
+-   Certifique-se de que determinadas colunas têm valores numéricos válidos e não nulos.
+
+A função `confront` serve para aplicar o conjunto de regras de crítica a uma base de dados específica.
+
+# Regras de tipo (T)
+
+```{r}
+# Crie um conjunto de regras de validade
+regras_tipo <- validator(
+  #Taxa bruta de mortalidade 
+  TI01 = is.numeric(S_TXBRUTAMORT),  
+  #Taxa de mortalidade por homicídio da população total
+  TI02 = is.numeric(S_TXMOHOMI),
+  #Taxa de mortalidade por homicídio da população de 15 a 29 anos
+  TI03 = is.numeric(S_TXMOHOMI15A29),
+  #Mortalidade proporcional da população idosa
+  TI04 = is.numeric(S_OBITO60),
+  #Proporção de nascidos vivos com baixo peso
+  TI05 = is.numeric(S_NASCBAIXOPESO),
+  #Casos confirmados notificados de sífilis congênita em menores de 1 ano
+  TI06 = is.numeric(S_OBINFSIFILS),
+  #Casos confirmados notificados de raiva humana
+  TI07 = is.numeric(S_OBRAIVA),
+  #Proporção de internações por doenças de veiculação hídrica
+  TI08 = is.numeric(S_INTERDVHID),
+  #Proporção de internações por doenças relacionadas ao saneamento ambiental inadequado
+  TI09 = is.numeric(S_INTERDRSAI),
+  #Existência de Conselho Municipal de Saúde
+  TI10 = is.character(U_CONSSAU)
+)
+
+# Aplica regras de crítica aos dados
+base_conf_tipo <- confront(dados, regras_tipo)
+
+# Obtém resumo da aplicação das regras aos dados
+summary(base_conf_tipo) %>% gt()
+
+# gráfico
+plot(base_conf_tipo)
+```
+
+# Regras de validade (V)
+
+```{r}
+regras_validade <- validator(
+  #Taxa bruta de mortalidade 
+  VI01 = (S_TXBRUTAMORT>= 0),  
+  #Taxa de mortalidade por homicídio da população total
+  VI02 = (S_TXMOHOMI >= 0),
+  #Taxa de mortalidade por homicídio da população de 15 a 29 anos
+  VI03 = (S_TXMOHOMI15A29 >= 0),
+  #Mortalidade proporcional da população idosa
+  VI04 = (S_OBITO60 >= 0),
+  #Proporção de nascidos vivos com baixo peso
+  VI05 = (S_NASCBAIXOPESO >= 0 & S_NASCBAIXOPESO <= 100),
+  #Casos confirmados notificados de sífilis congênita em menores de 1 ano
+  VI06 = (S_OBINFSIFILS >= 0),
+  #Casos confirmados notificados de raiva humana
+  VI07 = (S_OBRAIVA >= 0),
+  #Proporção de internações por doenças de veiculação hídrica
+  VI08 = (S_INTERDVHID >= 0 & S_INTERDVHID <= 100),
+  #Proporção de internações por doenças relacionadas ao saneamento ambiental inadequado
+  VI09 = (S_INTERDRSAI >= 0 & S_INTERDRSAI <= 100),
+  #Existência de Conselho Municipal de Saúde
+  VI10 = (U_CONSSAU %in% c("Sim","Não"))
+)
+
+# Aplica regras de crítica aos dados
+base_conf_validade <- confront(dados, regras_validade)
+
+# Obtém resumo da aplicação das regras aos dados
+summary(base_conf_validade) %>% gt()
+
+# gráfico
+plot(base_conf_validade)
+```
+
+# Regras de consistência (C)
+
+```{r}
+regras_consistencia <- validator(
+  #Taxa bruta de mortalidade 
+  CF01 = (S_TXBRUTAMORT/S_TXBRUTAMORT_t_1) <= 1.10,  
+  #Casos confirmados notificados de sífilis congênita em menores de 1 ano
+  CI06 = (S_OBINFSIFILS <= D_POPP0),
+  #Casos confirmados notificados de raiva humana
+  CI07 = (S_OBRAIVA <= D_POPT)
+)
+
+# Aplica regras de crítica aos dados
+base_conf_consistencia <- confront(dados, regras_consistencia)
+
+# Obtém resumo da aplicação das regras aos dados
+summary(base_conf_consistencia) %>% gt()
+
+# gráfico
+plot(base_conf_consistencia)
+```
+
+# Regras de distribuição (D)
+
+```{r}
+regras_distribuicao <- validator(
+    #Casos confirmados notificados de sífilis congênita em menores de 1 ano
+  DF01 = (S_OBINFSIFILS  < 5),
+  #Casos confirmados notificados de raiva humana
+  DF02 = (S_OBRAIVA < 5),
+  #Proporção de internações por doenças de veiculação hídrica
+  DF03 = (mean(S_INTERDVHID) <= 4),
+  #Proporção de internações por doenças relacionadas ao saneamento ambiental inadequado
+  DF04 = (mean(S_INTERDRSAI) <= 4),
+  #Existência de Conselho Municipal de Saúde
+  DF05 = (mean(U_CONSSAU=="Sim") >= 0.95)
+)
+# Aplica regras de crítica aos dados
+base_conf_distribuicao <- confront(dados, regras_distribuicao)
+
+# Obtém resumo da aplicação das regras aos dados
+summary(base_conf_distribuicao) %>% gt()
+
+# gráfico
+plot(base_conf_distribuicao)
+```
+
+# Referências
+
+Silva, P.L.d.N. (2020). Crítica e Imputação de Dados. Notas de aula - Escola Nacional de Ciências Estatísticas.
+
+van der Loo, M. P. J., & de Jonge, E. (2021). Data Validation Infrastructure for R. Journal of Statistical Software, 97(10), 1--31. <https://doi.org/10.18637/jss.v097.i10>

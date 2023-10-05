@@ -1,0 +1,23 @@
+project:
+  type: book
+
+book:
+  title: "fjp_boletim"
+  author: "Vitor Marinho"
+  date: "10/4/2023"
+  chapters:
+    - index.qmd
+    - intro.qmd
+    - summary.qmd
+    - references.qmd
+
+bibliography: references.bib
+
+format:
+  html:
+    theme: Sandstone
+  pdf:
+    documentclass: scrreprt
+
+editor: visual
+

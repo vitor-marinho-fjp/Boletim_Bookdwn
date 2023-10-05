@@ -1,0 +1,202 @@
+---
+title: "<img src='logo_td.png' alt='Logo' style='vertical-align: middle; width:150px'> Índice de Gini"
+description: | 
+  Tutorial de Transformação Digital #1
+subtitle: "Compartilhando Código em R"
+abstract: |
+  Este tutorial aborda o cálculo e visualização do Índice de Gini, uma medida estatística amplamente utilizada para avaliar a desigualdade na distribuição de renda em populações ou regiões. O Índice de Gini varia de 0 (igualdade perfeita) a 1 (desigualdade máxima) e é essencial para economistas, pesquisadores e formuladores de políticas públicas compreenderem a desigualdade socioeconômica.
+author:
+  - name: "[Vitor Marinho](https://github.com/vitor-marinho-fjp)"
+    affiliation: Fundação João Pinheiro/Cedeplar
+    affiliation_url: https://fjp.mg.gov.br/
+  - name: "[Renato Vale](https://github.com/renato-vale)"
+    affiliation: Fundação João Pinheiro
+    affiliation_url: https://fjp.mg.gov.br/
+format: html
+theme: Sandstone
+toc: true 
+number-sections: true
+lang: pt
+editor: visual
+bibliography: 
+ - references.bib
+---
+
+**Contato: [transformacao.digital\@fjp.mg.gov.br](mailto:transformacao.digital@fjp.mg.gov.br)**
+
+# Medidas de Desigualdade
+
+O Índice de Gini é uma medida estatística amplamente utilizada para avaliar a desigualdade na distribuição de renda em uma população ou país. Ele fornece uma medida numérica que varia de 0 a 1, onde 0 representa igualdade perfeita (ou seja, todas as pessoas possuem a mesma renda) e 1 representa desigualdade máxima (ou seja, uma única pessoa detém toda a renda, enquanto as demais não possuem nenhuma) [@hoffmann2017].
+
+Ao calcular o Índice de Gini, é possível obter uma compreensão clara do quão desigual é a distribuição de renda em uma sociedade. Ele é frequentemente usado por economistas, pesquisadores e formuladores de políticas públicas para medir e comparar a desigualdade em diferentes regiões e ao longo do tempo. Com base nessa medida, é possível identificar áreas de alta desigualdade e direcionar esforços para promover políticas sociais e econômicas mais igualitárias.
+
+Aqui estão alguns exemplos de problemas de pesquisa que podem ser analisados usando esse índice:
+
+1.  Desigualdade de renda entre diferentes grupos demográficos (por exemplo, gênero, raça, etnia).
+2.  Variação da desigualdade de renda em diferentes regiões geográficas.
+3.  Impacto das políticas governamentais na desigualdade de renda.
+4.  Relação entre desigualdade de renda e pobreza.
+5.  Efeitos da globalização na distribuição de renda.
+6.  Influência da educação e qualificação profissional na desigualdade de renda.
+7.  Efeitos da progressividade ou regressividade do sistema tributário na desigualdade de renda.
+8.  Comparação da desigualdade de renda ao longo do tempo.
+
+Esses são apenas alguns exemplos, e existem inúmeras questões de pesquisa que podem ser abordadas usando o Índice de Gini como medida de desigualdade de renda.
+
+Cada problema pode exigir abordagens metodológicas diferentes e fontes de dados específicas, mas o Índice de Gini oferece uma base sólida para explorar e compreender questões relacionadas à desigualdade socioeconômica.
+
+## Cálculo do Índice de Gini
+
+O Índice de Gini é calculado da seguinte maneira:
+
+$$
+ G = \frac{1}{2} \sum_{i=1}^{n} \sum_{j=1}^{n} |x_i - x_j|
+$$
+
+Onde: - (G) é o Índice de Gini. - (n) é o número de observações na amostra. - (x_i) são os valores ordenados da variável de renda. - (x_j) são os valores ordenados da mesma variável de renda. - (\|\cdot\|) é o valor absoluto. - (\mu) é a média da variável de renda.
+
+# Como Calcular o Índice de Gini no R
+
+Neste tutorial, você aprenderá como calcular o Índice de Gini no R usando dados de PIB municipal e população. Antes de começar, certifique-se de ter os pacotes necessários instalados. Caso contrário, você pode instalá-los usando a função `install.packages()`.
+
+```{r, message=FALSE, warning=FALSE, output=FALSE}
+# Lista de pacotes necessários
+pacotes <- c("sidrar", "ineq", "tidyverse",'ggspatial', 
+             "ggplot2", "plotly", 'geobr', 'gt')
+
+# Verifica se os pacotes estão instalados e instala se necessário
+install.packages(setdiff(x = pacotes,
+                         y = rownames(installed.packages())))
+
+# Carrega os pacotes
+lapply(X = pacotes,
+       FUN = library,
+       character.only = TRUE)
+
+```
+
+### Importando Dados
+
+Primeiro, vamos importar os dados de PIB municipal e população. O pacote SIDRAR nos permite puxar essas bases diretamente para o diretório do R via API.
+
+```{r}
+# PIB municipal
+pib <- get_sidra(api = '/t/5938/n6/all/v/37/p/last%201/d/v37%200' )
+
+# População
+populacao <- get_sidra(api = '/t/6579/n6/all/v/all/p/2020')
+
+```
+
+Agora, vamos limpar esses dados para reter apenas as informações relevantes.
+
+```{r}
+pib <- pib %>% janitor::clean_names() %>%
+  select(municipio_codigo,
+  municipio,
+  ano,
+  renda = valor
+)
+
+populacao <- populacao %>% janitor::clean_names() %>% select(
+  municipio_codigo,
+  municipio,
+  ano,
+  habitantes = valor
+)
+```
+
+### Preparando os Dados
+
+Em seguida, vamos juntar as bases de dados e criar a variável de PIB per capita.
+
+```{r}
+
+# Preparando a base de dados
+dados <- left_join(pib, populacao) %>%
+  separate(municipio, into = c("municipio", "uf"), sep = " - ") %>%
+  filter(uf=='MG') %>% 
+  mutate(pib_per_cp = renda/habitantes)
+
+
+
+```
+
+Aqui, estamos filtrando os dados para considerar apenas municípios em Minas Gerais (UF == 'MG').
+
+Lendo nossa base de dados
+
+```{r}
+dados %>%
+  head(10) %>%
+  gt()
+```
+
+### Calcular o Índice de Gini no R
+
+Vamos calcular o Índice de Gini para cada município.
+
+```{r}
+# Crie uma nova coluna para a acumulação de renda per capita
+dados <- dados %>%
+  mutate(acum_renda_per_capita = cumsum(pib_per_cp))
+
+# Crie uma nova coluna para a acumulação de pessoas
+dados <- dados %>%
+  mutate(acum_pessoas = cumsum(habitantes))
+
+# Calcule o Índice de Gini para cada município
+gini_municipios <- dados %>%
+  group_by(municipio) %>%
+  summarize(gini = 1 - 2 * sum(acum_renda_per_capita / (acum_pessoas + 1)),
+            code_muni = municipio_codigo)
+# Imprima o Índice de Gini para cada município
+print(gini_municipios) %>%
+  head(10)
+```
+
+### Visualizando os Resultados
+
+Por fim, podemos visualizar a distribuição espacial do Índice de Gini.
+
+```{r, message=FALSE, warning=FALSE, error=FALSE, results='hide'}
+
+mun <- read_municipality(code_muni = "MG", year = 2010)
+
+# Converter coluna
+gini_municipios$code_muni <- as.double(gini_municipios$code_muni)
+
+# Juntar coordenadas para criar o mapa
+gini_municipios<- left_join(gini_municipios, mun , by = 'code_muni')
+
+```
+
+Agora, vamos plotar os resultados em um mapa interativo.
+
+```{r}
+
+# Criar o gráfico ggplot com o Índice Gini como hovertext
+ggplot_obj <- gini_municipios %>% 
+  ggplot() +
+  geom_sf(data = gini_municipios$geom, aes(fill = gini_municipios$gini, text = paste("Município: ", gini_municipios$NM_MUNICIP, "<br>Índice Gini: ", gini_municipios$gini))) +
+  scale_fill_viridis_c(option = 15, begin = 0.2, end = 0.8,
+                       name = 'Gini') +
+  theme(panel.grid = element_line(colour = "transparent"),
+        panel.background = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank()) +
+  labs(title = "Índice de Gini 2020 dos Municípios de MG",
+       subtitle = 'Calculado com base no PIB per capita',
+       caption = 'Fonte: Elaboração própria', size = 8)+
+  annotation_scale(location = "bl", width_hint = 0.3)+ 
+  annotation_north_arrow(location = "bl", which_north = "true", 
+        pad_x = unit(0.3, "in"), pad_y = unit(0.3, "in"),
+        style = north_arrow_fancy_orienteering) +
+  theme(panel.grid = element_line(colour = "transparent"),panel.background =  element_blank(),axis.text = element_blank(),axis.ticks = element_blank())
+
+# Converter o gráfico ggplot para plotly com o hovertext
+interactive_plot <- ggplotly(ggplot_obj, tooltip = "text")
+
+# Exibir o gráfico interativo
+ggplot_obj
+```
